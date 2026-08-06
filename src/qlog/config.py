@@ -97,6 +97,7 @@ class Config:
                     "FIXED":        dict(title="Fixed"      ,rank= 3,itemize=True),
                     "DEPRECATED":   dict(title="Deprecated" ,rank= 4,itemize=True),
                     "REMOVED":      dict(title="Removed"    ,rank= 5,itemize=True),
+                    "PERFORMANCE":  dict(title="Performance",rank= 6,itemize=True),
                 }
             else:
                 assertt(typeof(dc)==dict,"'default_cats' must be a dictionary")
