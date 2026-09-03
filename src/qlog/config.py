@@ -100,10 +100,10 @@ class Config:
                     "PERFORMANCE":  dict(title="Performance",rank= 6,itemize=True),
                 }
             else:
-                assertt(typeof(dc)==dict,"'default_cats' must be a dictionary")
+                assertt(type(dc)==dict,"'default_cats' must be a dictionary")
                 self.DEFAULT_CATS = {}
                 for cat in dc.keys():
-                    assertt(typeof(dc[cat])==dict,f"default category '{cat}' must be a dictionary")
+                    assertt(type(dc[cat])==dict,f"default category '{cat}' must be a dictionary")
                     self.DEFAULT_CATS[clean_string(cat)] = dict(
                         title  =get_typed(dc[cat],"title"  ,cat  ,str),
                         rank   =get_typed(dc[cat],"rank"   ,100  ,int),
