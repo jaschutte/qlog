@@ -23,7 +23,7 @@ Alternatively, the tool can be installed via the nix flake. For example, you can
 add it to the default profile:
 
 ```
-$ nix profile add github:marijn-qbaylogic/qlog
+$ nix profile add github:QBayLogic/qlog
 ```
 
 
