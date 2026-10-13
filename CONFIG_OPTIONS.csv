@@ -13,6 +13,7 @@ issue_url,https://github.com/{project}/issues/{issue},"project, issue",url,issue
 pr_url,https://github.com/{project}/pull/{pr},"project, pr",url,pr url; used for posting messages on GH
 commit_url,https://github.com/{project}/branch_commits/{commit},"project, commit",url,"the url for a commit, used in the process of finding Prs"
 md_issue_link,[#{issue}]({issue_url}),"issue, issue_url",md,the MD to add to an entry for each linked issue
+md_pr_link,[P{pr}]({pr_url}),"pr, pr_url",md,the MD to add to an entry for each linked PR
 gh_issue_message,"We've released [v{version}](https://github.com/{project}/releases/tag/v{version}), which includes a fix for this issue.","project, version",str,message to post on GH issues
 gh_pr_message,"We've released [v{version}](https://github.com/{project}/releases/tag/v{version}), which includes this PR.","project, version",str,message to post on GH Prs
 gh_issue_title_cmd,"gh issue view {issue} --json title,url -q 'if .url | contains(""pull"") then error(""[PR] ""+.title) else .title end'",issue,bash,command for getting the title of a GH issue
