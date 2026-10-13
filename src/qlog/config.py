@@ -16,15 +16,20 @@ HEADER_PATTERN = re.compile(r"^#[^#].*$", re.MULTILINE)
 
 CONFIG_FILE = os.path.join(CHANGELOG_DIR,"config.yaml")
 
+CONTENTS_TEMPLATE = """
+# {cat}
+{contents}
+""".strip() # cat, contents
+
 ENTRY_TEMPLATE = """
 ---
 issues: {issues}
 prs: {prs}
-{no_links}---
+{no_links}
+---
 
-# {cat}
 {contents}
-""".lstrip() # issues, prs, no_links, cat, contents
+""".lstrip() # meta, cat, contents
 
 
 class Config:
@@ -73,7 +78,7 @@ class Config:
 
             self.ISSUE_URL  = key("issue_url","project","issue",d="https://github.com/{project}/issues/{issue}") # project, issue
             self.PR_URL     = key("pr_url"   ,"project","pr"   ,d="https://github.com/{project}/pull/{pr}") # project, pr
-            self.COMMIT_URL = key("commit_url","project","commit",d="https://github.com/{project}/branch_commits/{commit}") # project, commit
+            #self.COMMIT_URL = key("commit_url","project","commit",d="https://github.com/{project}/branch_commits/{commit}") # project, commit
 
             self.MD_ISSUE_LINK = key("md_issue_link","issue","issue_url",d="[#{issue}]({issue_url})") # issue, issue_url
             self.MD_PR_LINK = key("md_pr_link","pr","pr_url",d="[P{pr}]({pr_url})") # pr, pr_url
@@ -83,9 +88,10 @@ class Config:
 
             self.GH_ISSUE_TITLE_CMD = key("gh_issue_title_cmd","issue","project",d="""gh issue view {issue} --json title,url -q 'if .url | contains("pull") then "PR "+.title else "ISSUE "+.title end'""") # issue, project
             # self.GH_ISSUE_TITLE_CMD = key("gh_issue_title_cmd","issue","project",d="""curl --request GET --url "https://api.github.com/repos/{project}/issues/{issue}" --header "Accept: application/vnd.github+'json" | jq -r 'if .html_url | contains("pull") then "PR "+.title else "ISSUE "+.title end'""")
+            self.GH_BLAME_CMD = key("gh_blame_cmd","commit",d=r'gh pr list --search "{commit}" --state merged --json number -q "map(.number) | join(\" \")"')
 
-            self.GH_ISSUE_CMD = key("gh_issue_cmd","issue","issue_url","message_string",d="gh issue comment {issue_url} -b {message_string}") # issue, issue_url, message_string
-            self.GH_PR_CMD    = key("gh_pr_cmd"   ,"pr"   ,"pr_url"   ,"message_string",d="gh pr comment {pr_url} -b {message_string}") # pr, pr_url, message_string
+            self.GH_COMMENT_ISSUE_CMD = key("gh_comment_issue_cmd","issue","issue_url","message_string",d="gh issue comment {issue_url} -b {message_string}") # issue, issue_url, message_string
+            self.GH_COMMENT_PR_CMD    = key("gh_comment_pr_cmd"   ,"pr"   ,"pr_url"   ,"message_string",d="gh pr comment {pr_url} -b {message_string}") # pr, pr_url, message_string
 
             try:
                 dc = CONFIG["default_cats"]

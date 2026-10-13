@@ -102,3 +102,11 @@ class Entry:
 
     def check_order(self):
         ... #TODO: check that the order of the blobs matches the order of the sections?
+
+    def write(self):
+        try:
+            no_links = "no-links: true\n" if self.no_links else ""
+            with open(self.path,"w") as fp:
+                fp.write(ENTRY_TEMPLATE.format(issues=self.issues,prs=self.prs,no_links=no_links, contents=self.contents))
+        except:
+            error(f"Failed to write to {self.path}")

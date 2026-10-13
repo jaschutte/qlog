@@ -48,16 +48,17 @@ def github_get(fname,entry,get_issues=False, get_prs=False,get_titles=False):
     if get_issues:
         res["issues"] = [(i, mustbe(get_issue_title(i)[1],"ISSUE") + get_issue_title(i)[0] if get_titles else None) for i in entry.issues]
     if get_prs:
-        res["prs"] = [(p, mustbe(get_issue_title(i)[1],"PR") + get_issue_title(p)[0] if get_titles else None) for p in entry.prs]
+        res["prs"] = [(p, mustbe(get_issue_title(p)[1],"PR") + get_issue_title(p)[0] if get_titles else None) for p in entry.prs]
     return res
 
 
-def check_links(entry):
+def check_links(entry, links_required):
     if bool(entry.issues or entry.prs) == entry.no_links:
         if entry.no_links:
             error("No links flag set while issues/PRs were linked")
         else:
-            error("No issues/PRs linked without explicitly setting no-links flag")
+            if links_required:
+                error("No issues/PRs linked without explicitly setting no-links flag")
 
 def check_link_types(entry):
     for i in entry.issues:
@@ -69,3 +70,14 @@ def check_link_types(entry):
         match get_issue_title(p):
             case (title,"ISSUE"):
                 error(f"Linked PR {p} is actually a normal issue")
+
+def get_paths(paths=None, all=False):
+    find_newest = not paths and not all
+    if all or not paths:
+        paths = [os.path.join(ENTRY_DIR,fname) for fname in get_entries()]
+
+    if find_newest:
+        if paths:
+            paths = [max(paths, key=os.path.getmtime)]
+
+    return paths

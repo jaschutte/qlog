@@ -47,9 +47,10 @@ class App:
         #TODO: add a way to include only select files?
 
         parser_check = subparsers.add_parser("check", help="check if an entry is correct", description="Check one or more entries for errors.")
-        parser_check.add_argument("path"        , nargs="*", type=pathlib.Path  , help="entry to check; defaults to last edited")
-        parser_check.add_argument("-a","--all"  , action="store_true"           , help="check all entries")
-        parser_check.add_argument("-t","--types", action="store_true"           , help="check with GitHub that issues are issues and PRs are PRs (slow)")
+        parser_check.add_argument("path"           , nargs="*", type=pathlib.Path    , help="entries to check; defaults to last edited")
+        parser_check.add_argument("-a","--all"     , action="store_true"             , help="check all entries")
+        parser_check.add_argument("-L","--no-links", action="store_true",dest="links", help="allow entries to have no links, nor the no-links flag")
+        parser_check.add_argument("-t","--types"   , action="store_true"             , help="check with GitHub that issues are issues and PRs are PRs (slow)")
 
         parser_clean = subparsers.add_parser("clean", help="clean up entries, or check all entries have been collected", description="Make sure all entries have been removed." )
         parser_clean.add_argument("-D","--delete", action="store_true", help="delete remaining entries; if this flag is not specified, the program will error if any entries are left")
@@ -71,8 +72,11 @@ class App:
         parser_github_list.add_argument("-t","--titles"  , action="store_true"   , help="print issue/pr titles")
         parser_github_list.add_argument("-e","--per-entry",action="store_true"   , help="print results per entry")
 
-        parser_github_blame = subparsers_github.add_parser("blame", help="find source PRs", description="Find the PR(s) responsible for introducing a (changelog entry) file")
-        parser_github_blame.add_argument("path", type=pathlib.Path, help="the entry file to blame")
+        parser_github_blame = subparsers_github.add_parser("blame", help="find source PRs", description="Find the PR(s) responsible for introducing one or more entries, and link them")
+        parser_github_blame.add_argument("path"          , nargs="*", type=pathlib.Path  , help="entries to blame; defaults to last edited")
+        parser_github_blame.add_argument("-a","--all"    , action="store_true"           , help="blame all entries")
+        parser_github_blame.add_argument("-m","--missing", action="store_true"           , help="only blame entries with no issues/PRs")
+        parser_github_blame.add_argument("-w","--write"  , action="store_true"           , help="write PR numbers to incomplete entries (implies --missing)")
 
         parser_init = subparsers.add_parser("init", help="initialise the right directories; does nothing to existing files")
 
@@ -114,6 +118,7 @@ class App:
                 check(
                     paths = args.path,
                     all = args.all,
+                    links = args.links,
                     types = args.types,
                 )
             case "clean":
@@ -142,12 +147,15 @@ class App:
                         )
                     case "blame":
                         github_blame(
-                            path = args.path
+                            paths = args.path,
+                            all = args.all,
+                            incomplete = args.missing,
+                            write_incomplete = args.write,
                         )
             case "init":
                 init()
         
-        smart_exit()
+        smart_exit(True)
 
     def __call__(self):
         self.run()

@@ -19,19 +19,25 @@ def get_issue_title(i):
         return (title, ty)
 
 @functools.lru_cache(maxsize=None)
-def get_pr(digest):
-    html = requests.get(C.COMMIT_URL.format(project=C.PROJECT,commit=digest)).content
-    try:
-        doc = lxml.html.fromstring(html)
-    except:
-        prs = []
+def get_prs(digest):
+    result = subprocess.run(C.GH_BLAME_CMD.format(commit=digest), shell=True, capture_output=True)
+    if result.returncode:
+        err = result.stderr.decode().strip()
+        error(err)
+        return []
     else:
-        prs = doc.cssselect(".pull-request > a")
-        prs = tuple({int(pr.text.strip()[1:]) for pr in prs})
-    if len(prs) == 1:
-        return prs[0]
-    elif len(prs) > 1:
-        prs = ", ".join(str(pr) for pr in prs)
-        eprint(f"Multiple PRs for {digest}: {prs}")
-    else:
-        eprint(f"No PR for {digest}")
+        prs = list(map(int,result.stdout.decode().strip().split()))
+        return prs
+
+    # url based - gets rate limited
+    # html = requests.get(C.COMMIT_URL.format(project=C.PROJECT,commit=digest)).content
+    # try:
+    #     doc = lxml.html.fromstring(html)
+    # except:
+    #     error(f"Could not parse response trying to blame {digest}")
+    #     prs = []
+    # else:
+    #     prs = doc.cssselect(".pull-request > a")
+    #     print(prs,html.decode())
+    #     prs = list({int(pr.text.strip()[1:]) for pr in prs})
+    # return prs

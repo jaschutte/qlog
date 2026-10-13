@@ -26,6 +26,7 @@ def make_entry(title=None, issues=None, prs=None, cat=None, contents=None, inter
                 if not "n" in input(f"Confirm title \"{title}\" [Y/n]: ").lower():
                     break
 
+    no_links = False
     if issues is None and prs is None:
         issues = []
         prs = []
@@ -58,8 +59,8 @@ def make_entry(title=None, issues=None, prs=None, cat=None, contents=None, inter
                             break
                 else:
                     if "y" in input("Are you absolutely sure you do not want to link any issues? [y/N]: ").lower():
+                        no_links = "n" in input("Add links later? [Y/n]: ").lower()
                         break
-    no_links = "no-links: true\n" if not (issues or prs) else ""
 
     if cat is None:
         cat = "<category>"
@@ -109,8 +110,13 @@ def make_entry(title=None, issues=None, prs=None, cat=None, contents=None, inter
 
     fname = C.ENTRY_FILENAME_FORMAT.format(title=title,time=timestamp,cat=cat,issues=issues)
     
-    with open(os.path.join(ENTRY_DIR,fname),"w") as fp:
-        fp.write(ENTRY_TEMPLATE.format(issues=issues,prs=prs,no_links=no_links, cat=cat,contents=contents))
+    Entry(
+        os.path.join(ENTRY_DIR,fname),
+        CONTENTS_TEMPLATE.format(cat=cat,contents=contents),
+        issues,
+        prs,
+        no_links
+    ).write()
         
     print(os.path.abspath(os.path.join(ENTRY_DIR,fname)))
 
@@ -246,27 +252,20 @@ def collect(version=None, date=None, delete=False, skip_on_error=False, link_com
     
 
 
-def check(paths = None, all=False, types=False):
-    find_newest = not paths and not all
-    if all or not paths:
-        paths = [os.path.join(ENTRY_DIR,fname) for fname in get_entries()]
-
-    if find_newest:
-        # get last edited
-        if paths:
-            # print([(os.path.getmtime(path),path) for path in paths])
-            paths = [max((os.path.getmtime(path),path) for path in paths)[1]]
-        else:
-            eprint("No entries to check")
+def check(paths = None, all=False, links=True, types=False):
+    paths = get_paths(paths,all)
+    if not paths:
+        eprint("No entries to check")
 
     for path in paths:
-        eprint(f"Checking {path}")
+        print(emph(path))
 
         entry = Entry.open(path)
         if entry is None:
             continue
 
-        check_links(entry)
+        if links:
+            check_links(entry,links)
 
         if types:
             check_link_types(entry)
@@ -322,6 +321,7 @@ def github_list(post_issues=False, post_prs=False, per_entry=False, include_titl
         for e in data:
             print(e)
             print_set(data[e].get("issues"),data[e].get("prs"))
+            print()
     else:
         issues=set()
         prs=set()
@@ -381,7 +381,7 @@ def github_msg(post_issues=False, post_prs=False, version=None, out=None, exec_c
             if include_titles:
                 commands.append(f"# {title}")
             url = C.ISSUE_URL.format(issue=issue,project=C.PROJECT)
-            cmd = C.GH_ISSUE_CMD.format(issue_url=url, message_string=message_string)
+            cmd = C.GH_COMMENT_ISSUE_CMD.format(issue_url=url, message_string=message_string)
             commands.append(cmd)
     if post_prs:
         message_string = json.dumps(C.GH_PR_MESSAGE.format(version=version,project=C.PROJECT))
@@ -389,7 +389,7 @@ def github_msg(post_issues=False, post_prs=False, version=None, out=None, exec_c
             if include_titles:
                 commands.append(f"# {title}")
             url = C.PR_URL.format(pr=pr,project=C.PROJECT)
-            cmd = C.GH_PR_CMD.format(pr_url=url, message_string=message_string)
+            cmd = C.GH_COMMENT_PR_CMD.format(pr_url=url, message_string=message_string)
             commands.append(cmd)
 
     res = "\n".join(commands)+"\n"
@@ -415,25 +415,70 @@ def github_msg(post_issues=False, post_prs=False, version=None, out=None, exec_c
                     error(f"Exit code {z} for command {cmd}")
 
 
-def github_blame(path):
+def github_blame(paths=None, all=False, incomplete=False, write_incomplete=False):
     os.chdir(WORKING_DIR)
+
+    incomplete = incomplete or write_incomplete
+    paths = get_paths(paths,all)
     
-    try:
-        result = subprocess.run(["git","blame","-l",path], check=True, capture_output=True)
-    except Exception as e:
-        error(f"Failed to blame {path}: {e}")
-    else:
-        prs = set()
-        blame_lines = result.stdout.splitlines()
+    for path in paths:
+        # print(path)
+        if incomplete:
+            entry = Entry.open(path)
+            if entry is None:
+                continue
+            if entry.issues or entry.prs:
+                #eprint("  Issue/PR present - skipping")
+                continue
+            if entry.no_links:
+                print(emph(path))
+                print("  No link required - skipping")
+                continue
+        
+        print(emph(path))
 
-        for blame_line in blame_lines:
-            commit = blame_line.split()[0].decode()
-            if not (pr:=get_pr(commit)) is None:
-                prs.add(pr)
+        try:
+            result = subprocess.run(["git","blame","-l",path], check=True, capture_output=True)
+        except Exception as e:
+            error(f"Failed to blame {path}: {e}")
+        else:
+            prs = set()
+            blame_lines = result.stdout.splitlines()
 
-        print("PRs:")
-        for pr in sorted(list(prs)):
-            print(f"  {pr}: {get_issue_title(pr)[0][5:]}")
+            commits = set()
+            for blame_line in blame_lines:
+                commit = blame_line.split()[0].decode()
+                if not any(map(lambda c:c!="0",commit)): #uncommitted changes
+                    continue
+                commits.add(commit)
+
+            unblamed_commit = False
+            for commit in list(commits):
+                commit_prs = get_prs(commit)
+                prs.update(commit_prs)
+                if not commit_prs:
+                    error(f"Could not blame commit {commit}")
+                    unblamed_commit = True
+
+            if len(prs) == 0:
+                error("No PR found")
+                continue
+
+            print("  PR:")
+            for pr in sorted(list(prs)):
+                print(f"    {pr}: {get_issue_title(pr)[0]}")
+            
+            if len(prs) > 1:
+                error("Multiple PR candidates found")
+                continue
+
+            if unblamed_commit:
+                continue
+
+            if write_incomplete:
+                print("  Writing to entry file")
+                entry.prs=sorted(list(prs))
+                entry.write()
 
 def init():
     try:

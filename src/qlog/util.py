@@ -4,35 +4,58 @@ import re
 import os
 import unicodedata
 import subprocess
+import sys
+from colorama import Fore, Style, just_fix_windows_console
+
+just_fix_windows_console()
 
 WORKING_DIR = os.getcwd()
+
+# fancy output
+def red(s):
+    if sys.stderr.isatty() and "NO_COLOR" not in os.environ:
+        return f"{Fore.RED}{s}{Style.RESET_ALL}"
+    return s
+def yellow(s):
+    if sys.stderr.isatty() and "NO_COLOR" not in os.environ:
+        return f"{Fore.YELLOW}{s}{Style.RESET_ALL}"
+    return s
+def emph(s):
+    if sys.stderr.isatty() and "NO_COLOR" not in os.environ:
+        return f"{Style.BRIGHT}{s}{Style.RESET_ALL}"
+    return s
 
 
 # error handling
 ERROR = False
+WARN = False
 
 def error(msg = None):
     global ERROR
     ERROR = True
 
     if msg:
-        eprint(f"ERROR: {msg}")
+        eprint(red("ERROR: ")+msg)
 
 def fatal(msg = None):
     error(msg)
     smart_exit(1)
 
 def warn(msg):
-    eprint(f"WARN: {msg}")
+    global WARN
+    WARN = True
+    eprint(yellow("WARN: ")+msg)
 
 def has_failed():
     return ERROR
 
 def smart_exit(always=True):
     if has_failed():
-        eprint("Program finished with errors")
+        eprint(red("Program finished with errors"))
         exit(1)
     if always:
+        if WARN:
+            eprint(yellow("Program finished with warnings"))
         exit(0)
 
 # custom assert
