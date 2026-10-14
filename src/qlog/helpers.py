@@ -32,7 +32,7 @@ def issue_link(issue, include_title=False):
 def pr_link(pr, include_title=False):
     link = C.MD_PR_LINK.format(pr=pr, pr_url=C.PR_URL.format(pr=pr,project=C.PROJECT))
     if include_title:
-        (title,_) = get_issue_title(issue)
+        (title,_) = get_issue_title(pr)
         link += f" <!-- {title} -->"
     return link
 
